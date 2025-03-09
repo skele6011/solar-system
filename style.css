@@ -12,6 +12,36 @@ body {
     padding: 15px;
     border-radius: 5px;
     color: white;
+    z-index: 1000;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.8);
+    max-width: 320px;
+}
+
+/* Add dropdown styles */
+.dropdown-container {
+    margin: 10px 0 15px 0;
+}
+
+.dropdown-container label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.dropdown-container select {
+    width: 100%;
+    padding: 5px;
+    background: rgba(30, 30, 30, 0.8);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    outline: none;
+}
+
+.dropdown-container select option {
+    background: #222;
 }
 
 .slider-container {
@@ -21,10 +51,36 @@ body {
 .slider-container label {
     display: block;
     margin-bottom: 5px;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.9);
 }
 
 .slider-container input {
     width: 200px;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.slider-container input::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: white;
+    cursor: pointer;
+}
+
+.slider-container span {
+    display: block;
+    text-align: right;
+    font-size: 0.8em;
+    color: #ffcc00;
+    margin-top: 2px;
 }
 
 /* Planet info panel styles */
@@ -39,12 +95,18 @@ body {
     max-width: 300px;
     transition: opacity 0.3s ease;
     pointer-events: auto;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .planet-info h2 {
     margin-top: 0;
     border-bottom: 1px solid rgba(255,255,255,0.3);
     padding-bottom: 8px;
+}
+
+.planet-info p {
+    line-height: 1.4;
 }
 
 .planet-info-close {
@@ -56,4 +118,91 @@ body {
     color: white;
     cursor: pointer;
     font-size: 18px;
+}
+
+/* Add a subtle indicator when hovering over planets */
+.planet-hover-indicator {
+    position: absolute;
+    padding: 5px 10px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    border-radius: 3px;
+    pointer-events: none;
+    transform: translate(-50%, -100%);
+    margin-top: -10px;
+    font-size: 12px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.planet-hover-indicator.visible {
+    opacity: 1;
+}
+
+/* Add help text container */
+.help-text {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 15px 20px;
+    border-radius: 5px;
+    font-size: 14px;
+    max-width: 350px;
+    line-height: 1.4;
+    display: block;
+    z-index: 1000;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    opacity: 0.95;
+    cursor: pointer;
+    transition: opacity 0.5s ease;
+}
+
+.help-text p:first-child {
+    color: #ffcc00;
+    font-weight: bold;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 5px;
+    margin-bottom: 10px;
+}
+
+/* Add movement hint to help text */
+.help-text p.highlight {
+    color: #ffcc00;
+    font-weight: bold;
+}
+
+/* Add planet scale indicator */
+.scale-indicator {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 5px 15px;
+    border-radius: 5px;
+    font-size: 12px;
+    z-index: 1000;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Direction indicator for movement */
+.direction-indicator {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    pointer-events: none;
+    z-index: 100;
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
 }
