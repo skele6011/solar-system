@@ -51,10 +51,33 @@ var fillLight = new THREE.DirectionalLight(0x404060, 0.3);
 fillLight.position.set(0, -400, 0);
 scene.add(fillLight);
 
+// Create UI container for better organization
+const uiContainer = document.createElement('div');
+uiContainer.className = 'ui-container';
+document.body.appendChild(uiContainer);
+
+// Add refresh button
+const refreshButton = document.createElement('div');
+refreshButton.className = 'refresh-button';
+refreshButton.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+    </svg>
+`;
+refreshButton.title = "Reset Simulation";
+uiContainer.appendChild(refreshButton);
+
 // Add slider controls
 const controlPanel = document.createElement('div');
 controlPanel.className = 'control-panel';
 controlPanel.innerHTML = `
+    <div class="dropdown-container">
+        <label for="orbitalModel">Orbital Model</label>
+        <select id="orbitalModel">
+            <option value="heliocentric">Heliocentric Model (Modern)</option>
+            <option value="geocentric">Geocentric Model (Historical)</option>
+        </select>
+    </div>
     <div class="dropdown-container">
         <label for="scaleMode">View Mode</label>
         <select id="scaleMode">
@@ -81,10 +104,11 @@ controlPanel.innerHTML = `
         <span>True 1:1 Scale →</span>
     </div>
 `;
-document.body.appendChild(controlPanel);
+uiContainer.appendChild(controlPanel);
 
 let speedMultiplier = 1;
 let scaleMultiplier = 0.2; // Default scale is more visually appealing than true scale
+let orbitalModel = 'heliocentric'; // Default model is heliocentric (scientifically accurate)
 
 // Add event listeners for sliders
 document.getElementById('lightIntensity').addEventListener('input', function(e) {
@@ -99,6 +123,11 @@ document.getElementById('scaleMultiplier').addEventListener('input', function(e)
     scaleMultiplier = parseFloat(e.target.value);
     if (typeof window.updatePlanetScales === 'function') {
         window.updatePlanetScales(scaleMultiplier);
+        
+        // If in geocentric mode, also update the geocentric scales
+        if (window.orbitalModel === 'geocentric' && typeof window.updateGeocentricScales === 'function') {
+            window.updateGeocentricScales(scaleMultiplier);
+        }
     } else {
         console.warn('updatePlanetScales function not available yet');
     }
@@ -150,6 +179,31 @@ document.getElementById('scaleMode').addEventListener('change', function(e) {
     }
     if (typeof window.updatePlanetScales === 'function') {
         window.updatePlanetScales(scaleMultiplier);
+    }
+});
+
+// Add event listener for the orbital model dropdown
+document.getElementById('orbitalModel').addEventListener('change', function(e) {
+    orbitalModel = e.target.value;
+    if (typeof window.setOrbitalModel === 'function') {
+        window.setOrbitalModel(orbitalModel);
+    }
+    
+    // Reset camera position based on the model
+    if (orbitalModel === 'geocentric') {
+        // Move camera to Earth's position in geocentric mode
+        camera.position.set(0, 200, 400);
+        if (window.controls) {
+            window.controls.target.set(0, 0, 0); // Earth will be at origin
+            window.controls.update();
+        }
+    } else {
+        // Standard position for heliocentric mode
+        camera.position.set(0, 200, 400);
+        if (window.controls) {
+            window.controls.target.set(0, 0, 0); // Sun at origin
+            window.controls.update();
+        }
     }
 });
 
@@ -248,6 +302,8 @@ window.renderer = renderer;
 window.sun = sun;
 window.sunLight = sunLight;
 window.scaleMultiplier = scaleMultiplier;
+window.uiContainer = uiContainer;
+window.orbitalModel = orbitalModel;
 
 window.dispatchEvent(new Event('sceneready'));
 
@@ -299,3 +355,126 @@ setTimeout(function() {
         window.updatePlanetScales(initialScale);
     }
 }, 200);
+
+// Add scale indicator to show current scale
+const scaleIndicator = document.createElement('div');
+scaleIndicator.className = 'scale-indicator';
+scaleIndicator.textContent = 'Scale: Visual Mode';
+uiContainer.appendChild(scaleIndicator);
+
+// Update scale indicator when scale changes
+function updateScaleIndicator(scale) {
+    let scaleText = '';
+    if (scale <= 0.2) {
+        scaleText = 'Scale: Visual Mode';
+    } else if (scale >= 0.8) {
+        scaleText = 'Scale: True 1:1 (1 unit = 1M km)';
+    } else {
+        scaleText = 'Scale: Semi-Realistic';
+    }
+    scaleIndicator.textContent = scaleText;
+}
+
+// Add scale indicator update to scale change events
+document.getElementById('scaleMultiplier').addEventListener('input', function(e) {
+    updateScaleIndicator(parseFloat(e.target.value));
+});
+
+document.getElementById('scaleMode').addEventListener('change', function(e) {
+    let scaleValue;
+    switch(e.target.value) {
+        case 'visual': scaleValue = 0.1; break;
+        case 'mixed': scaleValue = 0.5; break;
+        case 'true': scaleValue = 1.0; break;
+    }
+    updateScaleIndicator(scaleValue);
+});
+
+// Initial update
+updateScaleIndicator(scaleMultiplier);
+
+// Add model indicator to show current model
+const modelIndicator = document.createElement('div');
+modelIndicator.className = 'scale-indicator';
+modelIndicator.style.bottom = '50px'; // Position below scale indicator
+modelIndicator.textContent = 'Model: Heliocentric (Modern)';
+uiContainer.appendChild(modelIndicator);
+
+// Update model indicator when model changes
+document.getElementById('orbitalModel').addEventListener('change', function(e) {
+    if (e.target.value === 'heliocentric') {
+        modelIndicator.textContent = 'Model: Heliocentric (Modern)';
+    } else {
+        modelIndicator.textContent = 'Model: Geocentric (Historical)';
+    }
+});
+
+// Add refresh functionality
+refreshButton.addEventListener('click', function() {
+    // Add a rotation animation while refreshing
+    refreshButton.style.transition = 'transform 0.5s ease';
+    refreshButton.style.transform = 'rotate(360deg)';
+    
+    setTimeout(() => {
+        // Reset rotation after animation completes
+        refreshButton.style.transition = 'none';
+        refreshButton.style.transform = 'rotate(0deg)';
+        
+        // Reset the simulation
+        resetSimulation();
+    }, 500);
+});
+
+// Function to reset the simulation
+function resetSimulation() {
+    // Reset camera position
+    camera.position.set(0, 200, 400);
+    camera.lookAt(0, 0, 0);
+    
+    // Reset orbit controls
+    if (window.controls) {
+        controls.target.set(0, 0, 0);
+        controls.update();
+    }
+    
+    // Reset to default scale
+    const initialScale = 0.2;
+    document.getElementById('scaleMultiplier').value = initialScale;
+    document.getElementById('scaleMode').value = 'visual';
+    scaleMultiplier = initialScale;
+    updateScaleIndicator(initialScale);
+    
+    // Reset to heliocentric model
+    document.getElementById('orbitalModel').value = 'heliocentric';
+    orbitalModel = 'heliocentric';
+    modelIndicator.textContent = 'Model: Heliocentric (Modern)';
+    
+    // Reset planet positions and scales
+    if (typeof window.setOrbitalModel === 'function') {
+        window.setOrbitalModel('heliocentric');
+    }
+    
+    if (typeof window.updatePlanetScales === 'function') {
+        window.updatePlanetScales(initialScale);
+    }
+    
+    // Reset animation speed
+    document.getElementById('animationSpeed').value = 1;
+    speedMultiplier = 1;
+    
+    // Reset lighting
+    document.getElementById('lightIntensity').value = 2.5;
+    sunLight.intensity = 2.5;
+    
+    document.getElementById('ambientLight').value = 0.6;
+    scene.children.forEach(child => {
+        if (child instanceof THREE.AmbientLight) {
+            child.intensity = 0.6;
+        }
+    });
+    
+    console.log("Simulation reset to default state");
+}
+
+// Expose the reset function to the window
+window.resetSimulation = resetSimulation;

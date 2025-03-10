@@ -93,6 +93,70 @@ var planetsData = [
 // Original planet sizes and distances for scale reference
 var originalScales = [];
 
+// Track positions for both models
+var originalPositions = {};
+var earthCenteredPositions = {};
+
+// Historical geocentric model distances (base values)
+const geocentricDistances = {
+    'Moon': 0.384, // 0.384 million km from Earth
+    'Mercury': 5,
+    'Venus': 10,
+    'Sun': 25,
+    'Mars': 40,
+    'Jupiter': 80,
+    'Saturn': 160,
+    'Uranus': 250, // Adding these for completeness
+    'Neptune': 280, // Adding these for completeness
+    // Fixed stars (celestial sphere): 250-300 units from Earth
+};
+
+// Store scaled versions of geocentric distances
+let scaledGeocentricDistances = {...geocentricDistances};
+
+// Function to scale geocentric distances based on scale multiplier
+function updateGeocentricScales(scaleMultiplier) {
+    // Different scaling for different scale ranges
+    let scaleFactor;
+    
+    if (scaleMultiplier < 0.3) {
+        // Visual mode - compress distances for better visibility
+        scaleFactor = 0.5 + scaleMultiplier;
+    } else if (scaleMultiplier >= 0.8) {
+        // True scale mode - expand distances for realism
+        scaleFactor = 1 + scaleMultiplier * 2;
+    } else {
+        // Mixed mode - balanced scaling
+        scaleFactor = 1 + scaleMultiplier;
+    }
+    
+    // Apply scaling to all distances
+    Object.keys(geocentricDistances).forEach(key => {
+        // Special case for Moon - keep it relatively close to Earth
+        if (key === 'Moon') {
+            scaledGeocentricDistances[key] = geocentricDistances[key] * (0.5 + scaleMultiplier * 2);
+        } 
+        // Mercury and Venus need to stay close to Sun
+        else if (key === 'Mercury' || key === 'Venus') {
+            const sunDistance = geocentricDistances['Sun'] * scaleFactor;
+            const relativeDistance = geocentricDistances[key] / geocentricDistances['Sun'];
+            scaledGeocentricDistances[key] = sunDistance * relativeDistance;
+        }
+        // Regular scaling for other bodies
+        else {
+            scaledGeocentricDistances[key] = geocentricDistances[key] * scaleFactor;
+        }
+    });
+    
+    // If we're in geocentric mode, update the orbits to reflect new distances
+    if (window.orbitalModel === 'geocentric') {
+        updateOrbitLines('geocentric');
+    }
+}
+
+// Keep track of Earth reference for geocentric calculations
+var earthPlanet = null;
+
 function createPlanets() {
     var textureLoader = new THREE.TextureLoader();
     
@@ -180,6 +244,11 @@ function createPlanets() {
         
         planet.add(hitbox); // Add hitbox as child of planet so it moves with it
 
+        // Store Earth reference for geocentric model
+        if (data.name === 'Earth') {
+            earthPlanet = planet;
+        }
+        
         planet.userData = { 
             distance: data.distance, 
             angle: Math.random() * Math.PI * 2, 
@@ -190,13 +259,19 @@ function createPlanets() {
             rotationSpeed: 0.01 / (data.size * 0.4) // Smaller planets rotate faster
         };
         
-        // Store original values for scaling
+        // Store original values for scaling and model changes
         originalScales.push({
             name: data.name,
             size: data.size,
             distance: data.distance
         });
         
+        // Store initial position for this planet
+        originalPositions[data.name] = {
+            distance: data.distance,
+            angle: planet.userData.angle
+        };
+
         // Set proper axial tilt for planets
         switch(data.name) {
             case 'Earth':
@@ -281,9 +356,181 @@ function createPlanets() {
     });
 }
 
+// Function to set the orbital model
+function setOrbitalModel(model) {
+    if (model !== 'heliocentric' && model !== 'geocentric') {
+        console.error('Invalid orbital model:', model);
+        return;
+    }
+    
+    // Update global model tracking
+    window.orbitalModel = model;
+    
+    if (model === 'geocentric') {
+        // Move Earth to center
+        setupGeocentric();
+    } else {
+        // Reset to heliocentric
+        resetToHeliocentric();
+    }
+}
+window.setOrbitalModel = setOrbitalModel;
+
+// Setup for geocentric model
+function setupGeocentric() {
+    // Find Earth
+    if (!earthPlanet) {
+        earthPlanet = planets.find(p => p.userData.name === 'Earth');
+        if (!earthPlanet) {
+            console.error('Earth not found, cannot setup geocentric model');
+            return;
+        }
+    }
+    
+    // Update geocentric scales based on current scale multiplier
+    updateGeocentricScales(window.scaleMultiplier || 0.2);
+    
+    // Store Earth's current position
+    const earthPos = new THREE.Vector3();
+    earthPlanet.getWorldPosition(earthPos);
+    
+    // Move the Sun to orbit Earth
+    const sun = window.sun;
+    if (sun) {
+        // Use the scaled geocentric distance for the Sun
+        sun.userData.geocentricDistance = scaledGeocentricDistances['Sun'];
+        sun.userData.geocentricAngle = earthPlanet.userData.angle + Math.PI; // Opposite of Earth
+        
+        // The sun now orbits Earth in geocentric model
+        sun.position.x = Math.cos(sun.userData.geocentricAngle) * sun.userData.geocentricDistance;
+        sun.position.z = Math.sin(sun.userData.geocentricAngle) * sun.userData.geocentricDistance;
+    }
+    
+    // Move Earth to center (0,0,0)
+    earthPlanet.position.set(0, 0, 0);
+    
+    // Update other planets' orbits to be geocentric
+    planets.forEach(function(planet) {
+        if (planet.userData.name === 'Earth') return;
+        
+        // Get the scaled geocentric distance for this planet
+        const geocentricDistance = scaledGeocentricDistances[planet.userData.name];
+        if (geocentricDistance !== undefined) {
+            planet.userData.geocentricDistance = geocentricDistance;
+        } else {
+            // Fallback to default distances for any bodies not in the table
+            planet.userData.geocentricDistance = planet.userData.distance;
+        }
+        
+        planet.userData.geocentricBaseAngle = planet.userData.angle - earthPlanet.userData.angle;
+    });
+    
+    // Move the orbit lines to center around Earth
+    updateOrbitLines('geocentric');
+    
+    // Update the sunlight position
+    if (window.sunLight) {
+        window.sunLight.position.copy(sun.position);
+    }
+}
+
+// Reset to heliocentric model
+function resetToHeliocentric() {
+    // Move Sun back to center
+    const sun = window.sun;
+    if (sun) {
+        sun.position.set(0, 0, 0);
+    }
+    
+    // Reset Earth and other planets to heliocentric orbits
+    planets.forEach(function(planet) {
+        const data = originalPositions[planet.userData.name];
+        if (data) {
+            planet.userData.distance = data.distance;
+            
+            // Reset position based on current angle
+            planet.position.x = Math.cos(planet.userData.angle) * planet.userData.distance;
+            planet.position.z = Math.sin(planet.userData.angle) * planet.userData.distance;
+        }
+    });
+    
+    // Reset orbit lines
+    updateOrbitLines('heliocentric');
+    
+    // Reset sunlight position to Sun
+    if (window.sunLight) {
+        window.sunLight.position.set(0, 0, 0);
+    }
+}
+
+// Update orbit line visuals based on model
+function updateOrbitLines(model) {
+    const scene = window.scene;
+    if (!scene) return;
+    
+    // Find all orbit rings
+    scene.children.forEach(obj => {
+        if (obj.type === 'Mesh' && obj.geometry.type === 'RingGeometry') {
+            // Check if this is a planet orbit
+            const innerRadius = obj.geometry.parameters.innerRadius;
+            const outerRadius = obj.geometry.parameters.outerRadius;
+            
+            if (model === 'geocentric') {
+                // Find which planet this orbit belongs to
+                for (let i = 0; i < planets.length; i++) {
+                    const planet = planets[i];
+                    if (planet.userData.name === 'Earth') {
+                        // Earth has no orbit in geocentric model
+                        if (Math.abs(innerRadius - (planet.userData.originalDistance - 0.5)) < 0.1) {
+                            obj.visible = false;
+                            break;
+                        }
+                    } else if (Math.abs(innerRadius - (planet.userData.originalDistance - 0.5)) < 0.1) {
+                        // Move this orbit to be centered on Earth
+                        if (planet.userData.name === 'Sun') {
+                            // Sun orbits Earth now with scaled distance
+                            const sunDistance = scaledGeocentricDistances['Sun'];
+                            let newOrbit = new THREE.RingGeometry(sunDistance - 0.5, sunDistance + 0.5, 128);
+                            obj.geometry.dispose();
+                            obj.geometry = newOrbit;
+                            obj.visible = true;
+                        } else {
+                            // Other planets orbit with scaled geocentric distances
+                            const distance = scaledGeocentricDistances[planet.userData.name] || planet.userData.distance;
+                            let newOrbit = new THREE.RingGeometry(distance - 0.5, distance + 0.5, 128);
+                            obj.geometry.dispose();
+                            obj.geometry = newOrbit;
+                            obj.visible = true;
+                        }
+                        break;
+                    }
+                }
+            } else {
+                // Heliocentric - restore original orbits
+                for (let i = 0; i < planets.length; i++) {
+                    const planet = planets[i];
+                    const originalData = originalScales.find(p => p.name === planet.userData.name);
+                    if (originalData && Math.abs(innerRadius - (planet.userData.distance - 0.5)) < 0.1) {
+                        // Reset to original orbit
+                        let newOrbit = new THREE.RingGeometry(originalData.distance - 0.5, originalData.distance + 0.5, 128);
+                        obj.geometry.dispose();
+                        obj.geometry = newOrbit;
+                        obj.visible = true;
+                        break;
+                    }
+                }
+            }
+        }
+    });
+}
+
 function updatePlanetScales(scaleMultiplier) {
     // Default value if not provided
     scaleMultiplier = scaleMultiplier || window.scaleMultiplier || 0.2;
+    window.scaleMultiplier = scaleMultiplier; // Store the current scale multiplier
+    
+    // Update geocentric distances based on this scale
+    updateGeocentricScales(scaleMultiplier);
     
     // Exact measurements where 1 unit = 1,000,000 km
     const exactSizes = {
@@ -488,34 +735,142 @@ function updatePlanetScales(scaleMultiplier) {
             }
         }
     });
+    
+    // If we're in geocentric model, update the planet positions to match new scales
+    if (window.orbitalModel === 'geocentric') {
+        setupGeocentric();
+    }
 }
 window.updatePlanetScales = updatePlanetScales;
 
 function updatePlanets(speedMultiplier = 1) {
-    planets.forEach(function(planet) {
-        // Orbital movement
-        planet.userData.angle += planet.userData.speed * speedMultiplier;
-        planet.position.x = Math.cos(planet.userData.angle) * planet.userData.distance;
-        planet.position.z = Math.sin(planet.userData.angle) * planet.userData.distance;
+    // Check which orbital model we're using
+    const model = window.orbitalModel || 'heliocentric';
+    
+    if (model === 'heliocentric') {
+        // Standard heliocentric model
+        planets.forEach(function(planet) {
+            // Orbital movement
+            planet.userData.angle += planet.userData.speed * speedMultiplier;
+            planet.position.x = Math.cos(planet.userData.angle) * planet.userData.distance;
+            planet.position.z = Math.sin(planet.userData.angle) * planet.userData.distance;
+            
+            // Self rotation
+            planet.rotation.y += planet.userData.rotationSpeed * speedMultiplier;
+            
+            // Update Earth's moon
+            if (planet.userData.name === 'Earth') {
+                planet.children.forEach(child => {
+                    // Check if this child has any meshes that could be the moon
+                    child.children.forEach(subChild => {
+                        if (subChild.userData && subChild.userData.name === 'Moon') {
+                            child.rotation.y += 0.03 * speedMultiplier; // Moon orbiting around Earth
+                            subChild.rotation.y += 0.01 * speedMultiplier; // Moon rotation
+                        }
+                    });
+                });
+            }
+        });
         
-        // Self rotation
-        planet.rotation.y += planet.userData.rotationSpeed * speedMultiplier;
-        
-        // Update Earth's moon
-        if (planet.userData.name === 'Earth') {
-            planet.children.forEach(child => {
-                // Check if this child has any meshes that could be the moon
+        // Keep Sun at center
+        if (window.sun) {
+            window.sun.position.set(0, 0, 0);
+        }
+    } else {
+        // Geocentric model
+        // Earth stays at center
+        if (earthPlanet) {
+            earthPlanet.position.set(0, 0, 0);
+            
+            // Update Earth's rotation
+            earthPlanet.rotation.y += earthPlanet.userData.rotationSpeed * speedMultiplier;
+            
+            // Update Earth's moon
+            earthPlanet.children.forEach(child => {
                 child.children.forEach(subChild => {
                     if (subChild.userData && subChild.userData.name === 'Moon') {
-                        child.rotation.y += 0.03 * speedMultiplier; // Moon orbiting around Earth
-                        subChild.rotation.y += 0.01 * speedMultiplier; // Moon rotation
+                        child.rotation.y += 0.03 * speedMultiplier; 
+                        subChild.rotation.y += 0.01 * speedMultiplier; 
                     }
                 });
             });
+            
+            // Update Earth's angle even though it doesn't move
+            earthPlanet.userData.angle += earthPlanet.userData.speed * speedMultiplier;
         }
-    });
+        
+        // Sun orbits Earth in geocentric model
+        if (window.sun) {
+            const sun = window.sun;
+            sun.userData.geocentricAngle = (sun.userData.geocentricAngle || 0) + 0.01 * speedMultiplier;
+            const sunDistance = scaledGeocentricDistances['Sun']; 
+            sun.position.x = Math.cos(sun.userData.geocentricAngle) * sunDistance;
+            sun.position.z = Math.sin(sun.userData.geocentricAngle) * sunDistance;
+            sun.rotation.y += 0.004 * speedMultiplier;
+            
+            // Update the light position to follow the sun
+            if (window.sunLight) {
+                window.sunLight.position.copy(sun.position);
+            }
+        }
+        
+        // Other planets orbit Earth with epicycles in geocentric model
+        planets.forEach(function(planet) {
+            if (planet.userData.name === 'Earth') return; // Skip Earth
+            
+            // Update planet's angle
+            planet.userData.angle += planet.userData.speed * speedMultiplier;
+            
+            const planetName = planet.userData.name;
+            const geocentricDistance = scaledGeocentricDistances[planetName] || planet.userData.distance;
+            
+            if (planetName === 'Moon') {
+                // Moon still orbits Earth directly
+                planet.position.x = Math.cos(planet.userData.angle) * scaledGeocentricDistances['Moon'];
+                planet.position.z = Math.sin(planet.userData.angle) * scaledGeocentricDistances['Moon'];
+            } else {
+                // For geocentric model, planets move in more complex paths
+                // Use scaled geocentric distances
+                const baseOrbitAngle = planet.userData.angle; 
+                
+                // Different epicycle behavior based on whether it's an inner or outer planet
+                let epicycleRadius, epicycleAngle;
+                
+                if (planetName === 'Mercury' || planetName === 'Venus') {
+                    // Inner planets in geocentric model move in epicycles around the Sun
+                    // First move the planet with the Sun
+                    const sunAngle = window.sun.userData.geocentricAngle;
+                    // Define sunDistance - this was missing before
+                    const sunDistance = scaledGeocentricDistances['Sun']; 
+                    
+                    // Then add epicyclic motion relative to the Sun
+                    epicycleRadius = geocentricDistance * 0.6; // Size of epicycle
+                    epicycleAngle = baseOrbitAngle * 5; // Make epicycles faster
+                    
+                    planet.position.x = Math.cos(sunAngle) * sunDistance + 
+                                       Math.cos(epicycleAngle) * epicycleRadius;
+                    planet.position.z = Math.sin(sunAngle) * sunDistance + 
+                                       Math.sin(epicycleAngle) * epicycleRadius;
+                } else {
+                    // Outer planets have epicycles centered on their main orbit around Earth
+                    epicycleRadius = geocentricDistance * 0.15;
+                    epicycleAngle = baseOrbitAngle * 3;
+                    
+                    planet.position.x = Math.cos(baseOrbitAngle) * geocentricDistance + 
+                                       Math.cos(epicycleAngle) * epicycleRadius;
+                    planet.position.z = Math.sin(baseOrbitAngle) * geocentricDistance + 
+                                       Math.sin(epicycleAngle) * epicycleRadius;
+                }
+            }
+            
+            // Self rotation
+            planet.rotation.y += planet.userData.rotationSpeed * speedMultiplier;
+        });
+    }
 }
+
 window.updatePlanets = updatePlanets;
+
 window.addEventListener('load', function() {
     createPlanets();
     // Apply initial scale

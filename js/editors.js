@@ -292,6 +292,9 @@ function addHelpText() {
         <p>- Mouse drag to rotate view</p>
         <p>- Mouse wheel to zoom in/out</p>
         <p>- Choose a view mode or use the slider</p>
+        <p><strong>Orbital Models:</strong></p>
+        <p>- <strong>Heliocentric:</strong> Modern model with Sun at center</p>
+        <p>- <strong>Geocentric:</strong> Historical Ptolemaic model with Earth at center</p>
         <p><em>Click this box to dismiss</em></p>
     `;
     document.body.appendChild(helpTextElement);
