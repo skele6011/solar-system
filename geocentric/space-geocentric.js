@@ -75,7 +75,7 @@ controlPanel.innerHTML = `
         <label for="orbitalModel">Orbital Model</label>
         <select id="orbitalModel">
             <option value="heliocentric">Heliocentric Model (Modern)</option>
-            <option value="geocentric">Geocentric Model (Historical)</option>
+            <option value="geocentric" selected>Geocentric Model (Historical)</option>
         </select>
     </div>
     <div class="dropdown-container">
@@ -108,7 +108,6 @@ uiContainer.appendChild(controlPanel);
 
 let speedMultiplier = 1;
 let scaleMultiplier = 0.2; // Default scale is more visually appealing than true scale
-let orbitalModel = 'heliocentric'; // Default model is heliocentric (scientifically accurate)
 
 // Add event listeners for sliders
 document.getElementById('lightIntensity').addEventListener('input', function(e) {
@@ -123,11 +122,6 @@ document.getElementById('scaleMultiplier').addEventListener('input', function(e)
     scaleMultiplier = parseFloat(e.target.value);
     if (typeof window.updatePlanetScales === 'function') {
         window.updatePlanetScales(scaleMultiplier);
-        
-        // If in geocentric mode, also update the geocentric scales
-        if (window.orbitalModel === 'geocentric' && typeof window.updateGeocentricScales === 'function') {
-            window.updateGeocentricScales(scaleMultiplier);
-        }
     } else {
         console.warn('updatePlanetScales function not available yet');
     }
@@ -187,15 +181,15 @@ document.getElementById('orbitalModel').addEventListener('change', function(e) {
     const newModel = e.target.value;
     
     // Redirect to appropriate page based on model
-    if (newModel === 'geocentric') {
+    if (newModel === 'heliocentric') {
         // Save any state if needed before redirecting
         localStorage.setItem('returnToScale', window.scaleMultiplier);
         
-        // Redirect to geocentric model
-        window.location.href = 'geocentric/geocentric.html';
+        // Redirect to main heliocentric model
+        window.location.href = '../index.html';
     } else {
-        // Already on heliocentric page, no need to redirect
-        modelIndicator.textContent = 'Model: Heliocentric (Modern)';
+        // Already on geocentric page, no need to redirect
+        modelIndicator.textContent = 'Model: Geocentric (Historical)';
     }
 });
 
@@ -204,16 +198,16 @@ var textureLoader = new THREE.TextureLoader();
 // Create the sun with more realistic shader
 var sunGeometry = new THREE.SphereGeometry(16, 64, 64);
 var sunMaterial = new THREE.MeshBasicMaterial({ 
-    map: textureLoader.load('textures/8k_sun.jpg')
+    map: textureLoader.load('../textures/8k_sun.jpg')
 });
 var sun = new THREE.Mesh(sunGeometry, sunMaterial);
 // Add sun data for info panel
 sun.userData = {
     name: "Sun",
-    description: "The star at the center of our Solar System. It's a nearly perfect sphere of hot plasma that provides most of the energy for life on Earth.",
-    diameter: "Approximately 1,392,700 km (109 times Earth's diameter)",
-    orbitalPeriod: "The Sun orbits the center of the Milky Way galaxy, taking about 225-250 million years",
-    dayLength: "Rotates in about 25-35 days, varying by latitude due to its gaseous nature"
+    description: "In the geocentric model, the Sun revolves around the Earth. Historically considered the fourth 'planet' orbiting Earth after the Moon, Mercury, and Venus.",
+    diameter: "Approximately 1,392,700 km",
+    orbitalPeriod: "About 365.25 days around Earth (in geocentric model)",
+    dayLength: "Rotates in about 25-35 days"
 };
 
 // Enhanced sun glow effect
@@ -262,7 +256,7 @@ var starMaterial = new THREE.PointsMaterial({
     size: 0.6,
     transparent: true,
     opacity: 0.8,
-    map: textureLoader.load('textures/star.png'), // We'll assume there's a star particle texture
+    map: textureLoader.load('../textures/star.png'),
     blending: THREE.AdditiveBlending
 });
 
@@ -295,7 +289,6 @@ window.sun = sun;
 window.sunLight = sunLight;
 window.scaleMultiplier = scaleMultiplier;
 window.uiContainer = uiContainer;
-window.orbitalModel = orbitalModel;
 
 window.dispatchEvent(new Event('sceneready'));
 
@@ -325,28 +318,6 @@ window.addEventListener('resize', function(){
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
-
-// Ensure scaleMultiplier is applied after planets are created
-window.addEventListener('load', function() {
-    setTimeout(function() {
-        if (typeof window.updatePlanetScales === 'function') {
-            window.updatePlanetScales(scaleMultiplier);
-        }
-    }, 100); // Short delay to ensure planets.js has loaded
-});
-
-// Initial scale setting with slight delay to ensure everything is loaded
-setTimeout(function() {
-    // Start with a more visual mode by default for better first impression
-    const initialScale = 0.2;
-    document.getElementById('scaleMultiplier').value = initialScale;
-    document.getElementById('scaleMode').value = 'visual';
-    scaleMultiplier = initialScale;
-    
-    if (typeof window.updatePlanetScales === 'function') {
-        window.updatePlanetScales(initialScale);
-    }
-}, 200);
 
 // Add scale indicator to show current scale
 const scaleIndicator = document.createElement('div');
@@ -389,30 +360,17 @@ updateScaleIndicator(scaleMultiplier);
 const modelIndicator = document.createElement('div');
 modelIndicator.className = 'scale-indicator';
 modelIndicator.style.bottom = '50px'; // Position below scale indicator
-modelIndicator.textContent = 'Model: Heliocentric (Modern)';
+modelIndicator.textContent = 'Model: Geocentric (Historical)';
 uiContainer.appendChild(modelIndicator);
 
-// Update model indicator when model changes
-document.getElementById('orbitalModel').addEventListener('change', function(e) {
-    if (e.target.value === 'heliocentric') {
-        modelIndicator.textContent = 'Model: Heliocentric (Modern)';
-    } else {
-        modelIndicator.textContent = 'Model: Geocentric (Historical)';
-    }
-});
-
-// Add refresh functionality
+// Add refresh button functionality
 refreshButton.addEventListener('click', function() {
-    // Add a rotation animation while refreshing
     refreshButton.style.transition = 'transform 0.5s ease';
     refreshButton.style.transform = 'rotate(360deg)';
     
     setTimeout(() => {
-        // Reset rotation after animation completes
         refreshButton.style.transition = 'none';
         refreshButton.style.transform = 'rotate(0deg)';
-        
-        // Reset the simulation
         resetSimulation();
     }, 500);
 });
@@ -438,22 +396,12 @@ function resetSimulation() {
     scaleMultiplier = initialScale;
     updateScaleIndicator(initialScale);
     
-    // Reset to heliocentric model first
-    document.getElementById('orbitalModel').value = 'heliocentric';
-    orbitalModel = 'heliocentric';
-    modelIndicator.textContent = 'Model: Heliocentric (Modern)';
-    
-    // Complete reset of planet positions and model data
-    if (typeof window.resetAllPlanetPositions === 'function') {
-        window.resetAllPlanetPositions();
+    // Reset the planets
+    if (typeof window.resetPlanetPositions === 'function') {
+        window.resetPlanetPositions();
     }
     
-    // Re-initialize the model data
-    if (typeof window.initializeModelData === 'function') {
-        window.initializeModelData('heliocentric');
-    }
-    
-    // Reset planet positions and scales
+    // Reset planet scales
     if (typeof window.updatePlanetScales === 'function') {
         window.updatePlanetScales(initialScale);
     }
@@ -479,6 +427,23 @@ function resetSimulation() {
 // Expose the reset function to the window
 window.resetSimulation = resetSimulation;
 
-// Expose necessary functions to the window
-window.resetSimulation = resetSimulation;
-window.initializeModelData = initializeModelData;
+// Check if we should restore a scale from previous session
+document.addEventListener('DOMContentLoaded', function() {
+    const savedScale = localStorage.getItem('returnToScale');
+    if (savedScale) {
+        const scale = parseFloat(savedScale);
+        scaleMultiplier = scale;
+        document.getElementById('scaleMultiplier').value = scale;
+        updateScaleIndicator(scale);
+        
+        // Clear saved scale after using it
+        localStorage.removeItem('returnToScale');
+        
+        // Apply after planets are created
+        setTimeout(function() {
+            if (typeof window.updatePlanetScales === 'function') {
+                window.updatePlanetScales(scale);
+            }
+        }, 200);
+    }
+});
