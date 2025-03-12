@@ -1,364 +1,240 @@
-var planets = [];
-var planetsData = [
-    { 
-        name: 'Mercury', 
-        distance: 10, 
-        size: 3, 
-        speed: 0.04, 
-        color: 0x808080,
-        description: 'In the geocentric model, Mercury orbits around Earth with complex epicycles, making it appear to occasionally move backward in the sky.',
-        diameter: 'Approximately 4,880 km',
-        orbitalPeriod: '88 Earth days (observed)',
-        dayLength: 'Unknown to ancient astronomers'
-    },
-    { 
-        name: 'Venus', 
-        distance: 18, 
-        size: 5.8, 
-        speed: 0.025, 
-        color: 0xffd700,
-        description: 'In the geocentric model, Venus was believed to orbit Earth closer than the Sun did, as it always appears near the Sun from Earth\'s perspective.',
-        diameter: 'Approximately 12,104 km',
-        orbitalPeriod: '225 Earth days (observed)',
-        dayLength: 'Unknown to ancient astronomers'
-    },
+var celestialBodies = [];
+var earth; // Reference to Earth
+var sun; // Reference to Sun
+var originalGeoScales = [];
+var originalPositions = {};
+
+// Geocentric data - Earth at center with historical properties
+var celestialData = [
     { 
         name: 'Earth', 
-        distance: 0, 
         size: 6, 
-        speed: 0, 
+        isCenter: true, 
         color: 0x4169e1,
-        description: 'In the geocentric model, Earth is stationary at the center of the universe, with all celestial bodies revolving around it.',
-        diameter: 'The standard of measurement',
-        orbitalPeriod: 'N/A (stationary)',
+        description: 'In the Ptolemaic system, Earth is the stationary center of the universe. All celestial bodies orbit around it.',
+        diameter: 'Approximately 12,742 km',
+        orbitalPeriod: 'Stationary - center of the universe',
         dayLength: '24 hours'
     },
     { 
-        name: 'Mars', 
-        distance: 36, 
-        size: 4, 
+        name: 'Moon', 
+        distance: 15, 
+        size: 1.6, 
+        speed: 0.03, 
+        color: 0xCCCCCC,
+        description: 'Earth\'s only natural satellite. In the geocentric model, it is the closest celestial body orbiting Earth.',
+        diameter: 'Approximately 3,475 km',
+        orbitalPeriod: 'About 27.3 Earth days',
+        dayLength: '29.5 Earth days (synchronized rotation)'
+    },
+    { 
+        name: 'Mercury', 
+        distance: 50, 
+        size: 3, 
         speed: 0.015, 
+        epicycleRadius: 10,
+        epicycleSpeed: 0.08,
+        color: 0x808080,
+        description: 'In the Ptolemaic system, Mercury moves on a small epicycle, which in turn moves around a larger deferent centered on Earth.',
+        diameter: 'Approximately 4,880 km',
+        orbitalPeriod: 'About 88 Earth days',
+        dayLength: 'Roughly 58 Earth days (rotation period)'
+    },
+    { 
+        name: 'Venus', 
+        distance: 70, 
+        size: 5.8, 
+        speed: 0.01, 
+        epicycleRadius: 15,
+        epicycleSpeed: 0.06,
+        color: 0xffd700,
+        description: 'Second planet from the Sun in reality, but in the geocentric model, Venus orbits between the Sun and Mars.',
+        diameter: 'Approximately 12,104 km',
+        orbitalPeriod: 'About 225 Earth days',
+        dayLength: 'Around 243 Earth days (retrograde rotation)'
+    },
+    { 
+        name: 'Sun', 
+        distance: 100, 
+        size: 16, 
+        speed: 0.008,
+        epicycleRadius: 0, // Sun doesn't use epicycles in Ptolemaic model
+        epicycleSpeed: 0,
+        color: 0xffdd00,
+        description: 'In the geocentric model, the Sun orbits around Earth. The Ptolemaic system placed it between Venus and Mars.',
+        diameter: 'Approximately 1,392,700 km (109 times Earth\'s diameter)',
+        orbitalPeriod: 'About 365.25 Earth days in the geocentric model',
+        dayLength: 'Approximately 27 Earth days'
+    },
+    { 
+        name: 'Mars', 
+        distance: 150, 
+        size: 4, 
+        speed: 0.006, 
+        epicycleRadius: 20,
+        epicycleSpeed: 0.04,
         color: 0xff4500,
-        description: 'In the geocentric model, Mars orbits around Earth. Its retrograde motion was explained using epicycles - smaller orbits along its main orbit.',
+        description: 'In the geocentric system, Mars orbits beyond the Sun, exhibiting complex retrograde motion that was explained with epicycles.',
         diameter: 'Approximately 6,779 km',
-        orbitalPeriod: '687 Earth days (observed)',
-        dayLength: 'Unknown to ancient astronomers'
+        orbitalPeriod: 'About 687 Earth days',
+        dayLength: 'Approximately 24.6 hours'
     },
     { 
         name: 'Jupiter', 
-        distance: 70, 
+        distance: 200, 
         size: 15, 
-        speed: 0.008, 
+        speed: 0.004, 
+        epicycleRadius: 25,
+        epicycleSpeed: 0.03,
         color: 0xffa500,
-        description: 'In the geocentric model, Jupiter was one of the "wandering stars" orbiting Earth. Its slow movement across the sky reflected its outer position.',
+        description: 'Known to ancient astronomers, Jupiter was considered a wandering star in the geocentric model, orbiting Earth beyond Mars.',
         diameter: 'Approximately 139,820 km',
         orbitalPeriod: 'About 12 Earth years',
-        dayLength: 'Unknown to ancient astronomers'
+        dayLength: 'Roughly 9.9 hours'
     },
     { 
         name: 'Saturn', 
-        distance: 100, 
+        distance: 250, 
         size: 12, 
-        speed: 0.005, 
+        speed: 0.002, 
+        epicycleRadius: 30,
+        epicycleSpeed: 0.02,
         color: 0xffd700,
-        description: 'In the geocentric model, Saturn was the most distant known planet, orbiting around a stationary Earth in the outermost sphere before the fixed stars.',
+        description: 'The outermost planet known to ancient astronomers. In the Ptolemaic system, it was the slowest moving celestial body.',
         diameter: 'Approximately 116,460 km',
         orbitalPeriod: 'About 29.5 Earth years',
-        dayLength: 'Unknown to ancient astronomers'
+        dayLength: 'Around 10.7 hours'
     }
-    // Uranus and Neptune weren't known in ancient times
 ];
 
-// Store original scales and positions
-var originalScales = [];
-var originalPositions = {};
-
-// Geocentric model distances (scaled for visualization with proper separation)
-const geocentricDistances = {
-    'Moon': 15,        // Increased for better visibility
-    'Mercury': 40,     // Further increased spacing
-    'Venus': 70,       // More spacing between planets
-    'Sun': 100,        // Key position in geocentric model
-    'Mars': 160,       // Much wider spacing for outer planets
-    'Jupiter': 240,    // Increased substantially
-    'Saturn': 360      // More distance from Jupiter
-};
-
-// Store scaled versions of geocentric distances for dynamic scaling
-let scaledGeocentricDistances = {...geocentricDistances};
-
-function updateGeocentricScales(scaleMultiplier) {
-    // Different scaling for different scale ranges
-    let scaleFactor;
-    
-    if (scaleMultiplier < 0.3) {
-        // Visual mode - compress distances slightly, but maintain separation
-        scaleFactor = 0.7 + scaleMultiplier * 0.5; // Higher minimum to prevent overlap
-    } else if (scaleMultiplier >= 0.8) {
-        // True scale mode - expand distances for realism
-        scaleFactor = 1 + scaleMultiplier * 2;
-    } else {
-        // Mixed mode - balanced scaling with better separation
-        scaleFactor = 0.9 + scaleMultiplier * 1.2;
-    }
-    
-    // Apply scaling to all distances, maintaining geocentric model's structure
-    Object.keys(geocentricDistances).forEach(key => {
-        // Apply progressive spacing factor - bodies further out get more space
-        let progressiveFactor = 1.0;
-        
-        // Each celestial body gets its own spacing factor
-        switch(key) {
-            case 'Moon': 
-                // Keep Moon close to Earth but ensure visibility
-                scaledGeocentricDistances[key] = geocentricDistances[key] * (0.6 + scaleMultiplier * 1.2);
-                break;
-            case 'Mercury':
-                progressiveFactor = 1.05;
-                scaledGeocentricDistances[key] = geocentricDistances[key] * scaleFactor * progressiveFactor;
-                break;
-            case 'Venus':
-                progressiveFactor = 1.1;
-                scaledGeocentricDistances[key] = geocentricDistances[key] * scaleFactor * progressiveFactor;
-                break;
-            case 'Sun':
-                progressiveFactor = 1.15;
-                scaledGeocentricDistances[key] = geocentricDistances[key] * scaleFactor * progressiveFactor;
-                break;
-            case 'Mars':
-                progressiveFactor = 1.2;
-                scaledGeocentricDistances[key] = geocentricDistances[key] * scaleFactor * progressiveFactor;
-                break;
-            case 'Jupiter':
-                progressiveFactor = 1.25;
-                scaledGeocentricDistances[key] = geocentricDistances[key] * scaleFactor * progressiveFactor;
-                break;
-            case 'Saturn':
-                progressiveFactor = 1.3;
-                scaledGeocentricDistances[key] = geocentricDistances[key] * scaleFactor * progressiveFactor;
-                break;
-            default:
-                scaledGeocentricDistances[key] = geocentricDistances[key] * scaleFactor;
-        }
-    });
-    
-    // Update orbit lines to reflect new distances
-    updateOrbitLines();
-}
-
-// Create celestial bodies for the geocentric model
-function createPlanets() {
+function createGeocentricSystem() {
     var textureLoader = new THREE.TextureLoader();
     
-    // Create Earth first (it's at the center)
-    var earthData = planetsData.find(p => p.name === 'Earth');
-    if (earthData) {
-        var earthGeometry = new THREE.SphereGeometry(earthData.size, 32, 32);
-        var earthMaterial = new THREE.MeshPhongMaterial({
-            map: textureLoader.load('../textures/8k_earth_daymap.jpg'),
-            shininess: 25
-        });
-        var earth = new THREE.Mesh(earthGeometry, earthMaterial);
-        earth.rotation.y = Math.PI;
-        earth.rotation.z = 23.5 * Math.PI / 180; // Earth's axial tilt
+    celestialData.forEach(function(data) {
+        var geometry = new THREE.SphereGeometry(data.size, 32, 32);
+        var material;
+        var celestialBody;
         
-        // Add cloud layer
-        var cloudGeometry = new THREE.SphereGeometry(earthData.size + 0.2, 32, 32);
-        var cloudMaterial = new THREE.MeshPhongMaterial({
-            map: textureLoader.load('../textures/8k_earth_clouds.jpg'),
-            transparent: true,
-            opacity: 0.8,
-            side: THREE.DoubleSide
-        });
-        var clouds = new THREE.Mesh(cloudGeometry, cloudMaterial);
-        earth.add(clouds);
-        
-        // Add night lights
-        var nightGeometry = new THREE.SphereGeometry(earthData.size + 0.05, 32, 32);
-        var nightMaterial = new THREE.MeshBasicMaterial({
-            map: textureLoader.load('../textures/8k_earth_nightmap.jpg'),
-            transparent: true,
-            opacity: 0.8,
-            blending: THREE.AdditiveBlending
-        });
-        var nightSide = new THREE.Mesh(nightGeometry, nightMaterial);
-        earth.add(nightSide);
-        
-        // Add hitbox for Earth
-        const hitboxGeometry = new THREE.SphereGeometry(earthData.size * 2, 8, 8);
-        const hitboxMaterial = new THREE.MeshBasicMaterial({
-            transparent: true,
-            opacity: 0,
-            depthWrite: false
-        });
-        const hitbox = new THREE.Mesh(hitboxGeometry, hitboxMaterial);
-        hitbox.userData = { ...earthData, isHitbox: true };
-        earth.add(hitbox);
-        
-        earth.userData = {
-            name: 'Earth',
-            distance: 0,
-            angle: 0,
-            speed: 0, // Earth doesn't orbit in geocentric model
-            rotationSpeed: 0.01 / (earthData.size * 0.4),
-            originalSize: earthData.size,
-            originalDistance: 0
-        };
-        
-        earth.position.set(0, 0, 0); // Earth at center
-        window.scene.add(earth);
-        planets.push(earth);
-        
-        // Store Earth's original scale
-        originalScales.push({
-            name: 'Earth',
-            size: earthData.size,
-            distance: 0
-        });
-        
-        originalPositions['Earth'] = {
-            distance: 0,
-            angle: 0
-        };
-        
-        // Add the Moon orbiting Earth
-        const moonSize = earthData.size * 0.27;
-        const moonDistance = scaledGeocentricDistances['Moon'];
-        const moonGeometry = new THREE.SphereGeometry(moonSize, 32, 32);
-        const moonMaterial = new THREE.MeshPhongMaterial({
-            map: textureLoader.load('../textures/8k_moon.jpg'),
-            shininess: 5
-        });
-        const moon = new THREE.Mesh(moonGeometry, moonMaterial);
-        
-        // Create a separate moon object (not a child of Earth)
-        moon.userData = {
-            name: 'Moon',
-            distance: moonDistance,
-            angle: Math.random() * Math.PI * 2,
-            speed: 0.06, // Moon moves fastest in the sky
-            rotationSpeed: 0.01,
-            description: "The Moon was the closest celestial body to Earth in the geocentric model, orbiting in the first sphere.",
-            diameter: "Approximately 3,475 km",
-            orbitalPeriod: "27.3 Earth days",
-            dayLength: "27.3 Earth days (synchronous rotation)"
-        };
-        
-        // Add hitbox for Moon
-        const moonHitbox = new THREE.Mesh(
-            new THREE.SphereGeometry(moonSize * 2, 8, 8),
-            new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
-        );
-        moonHitbox.userData = { ...moon.userData, isHitbox: true };
-        moon.add(moonHitbox);
-        
-        moon.position.set(moonDistance, 0, 0);
-        window.scene.add(moon);
-        planets.push(moon);
-        
-        originalScales.push({
-            name: 'Moon',
-            size: moonSize,
-            distance: moonDistance
-        });
-        
-        originalPositions['Moon'] = {
-            distance: moonDistance,
-            angle: moon.userData.angle
-        };
-        
-        // Add Moon's orbit circle
-        const moonOrbit = new THREE.Mesh(
-            new THREE.RingGeometry(moonDistance - 0.2, moonDistance + 0.2, 64),
-            new THREE.MeshBasicMaterial({
-                color: 0xffffff,
-                side: THREE.DoubleSide,
+        // Special cases for Earth and texture mapping
+        if (data.name === 'Earth') {
+            material = new THREE.MeshPhongMaterial({ 
+                map: textureLoader.load('../textures/8k_earth_daymap.jpg'),
+                shininess: 25
+            });
+            celestialBody = new THREE.Mesh(geometry, material);
+            celestialBody.rotation.y = Math.PI;
+
+            // Add cloud layer
+            var cloudGeometry = new THREE.SphereGeometry(data.size + 0.2, 32, 32);
+            var cloudMaterial = new THREE.MeshPhongMaterial({
+                map: textureLoader.load('../textures/8k_earth_clouds.jpg'),
                 transparent: true,
-                opacity: 0.15
-            })
-        );
-        moonOrbit.rotation.x = Math.PI / 2;
-        window.scene.add(moonOrbit);
-    }
-    
-    // Add explicit orbit for the Sun around Earth
-    const sunDistance = scaledGeocentricDistances['Sun'];
-    const sunOrbit = new THREE.Mesh(
-        new THREE.RingGeometry(sunDistance - 0.8, sunDistance + 0.8, 128),
-        new THREE.MeshBasicMaterial({
-            color: 0xffdd99, // Slightly different color for the Sun's orbit
-            side: THREE.DoubleSide,
-            transparent: true,
-            opacity: 0.2 // More visible than other orbits
-        })
-    );
-    sunOrbit.rotation.x = Math.PI / 2;
-    window.scene.add(sunOrbit);
-    
-    // Initialize Sun position
-    const sun = window.sun;
-    if (sun) {
-        sun.userData.angle = Math.PI/2; // Start at 90° position (12 o'clock)
-        sun.userData.distance = sunDistance;
-        sun.position.x = Math.cos(sun.userData.angle) * sunDistance;
-        sun.position.z = Math.sin(sun.userData.angle) * sunDistance;
-    }
-    
-    // Create a sunOrbitCenter object to hold all planet orbits
-    // This will move with the sun, rotating all planetary orbits with it
-    const sunOrbitCenter = new THREE.Object3D();
-    sunOrbitCenter.position.copy(sun.position);
-    window.scene.add(sunOrbitCenter);
-    window.sunOrbitCenter = sunOrbitCenter;
-    
-    // Create other planets
-    for (let i = 0; i < planetsData.length; i++) {
-        const data = planetsData[i];
-        if (data.name === 'Earth') continue; // Already created Earth
-        
-        const geometry = new THREE.SphereGeometry(data.size, 32, 32);
-        let material, planet;
-        
-        // Regular planet textures
-        let texturePath;
-        switch(data.name) {
-            case 'Mercury': texturePath = '8k_mercury.jpg'; break;
-            case 'Venus': texturePath = '8k_venus_surface.jpg'; break;
-            case 'Mars': texturePath = '8k_mars.jpg'; break;
-            case 'Jupiter': texturePath = '8k_jupiter.jpg'; break;
-            case 'Saturn': texturePath = '8k_saturn.jpg'; break;
-            default: texturePath = '8k_mercury.jpg';
-        }
-        
-        material = new THREE.MeshPhongMaterial({
-            map: textureLoader.load(`../textures/${texturePath}`),
-            shininess: 25
-        });
-        
-        planet = new THREE.Mesh(geometry, material);
-        planet.rotation.y = Math.PI;
-        
-        // Add proper axial tilt
-        switch(data.name) {
-            case 'Mars': planet.rotation.z = 25.2 * Math.PI / 180; break;
-            case 'Jupiter': planet.rotation.z = 3.1 * Math.PI / 180; break;
-            case 'Saturn': planet.rotation.z = 26.7 * Math.PI / 180; break;
-        }
-        
-        // Add Saturn's rings if needed
-        if (data.name === 'Saturn') {
-            const ringGeometry = new THREE.RingGeometry(data.size + 4, data.size + 12, 64);
-            const ringTexture = textureLoader.load('../textures/8k_saturn_ring_alpha.png');
-            const ringMaterial = new THREE.MeshBasicMaterial({
-                map: ringTexture,
-                transparent: true,
+                opacity: 0.8,
                 side: THREE.DoubleSide
             });
-            const rings = new THREE.Mesh(ringGeometry, ringMaterial);
-            rings.rotation.x = Math.PI / 2;
-            planet.add(rings);
+            var clouds = new THREE.Mesh(cloudGeometry, cloudMaterial);
+            celestialBody.add(clouds);
+            
+            // Add night lights
+            var nightGeometry = new THREE.SphereGeometry(data.size + 0.05, 32, 32);
+            var nightMaterial = new THREE.MeshBasicMaterial({
+                map: textureLoader.load('../textures/8k_earth_nightmap.jpg'),
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
+            });
+            var nightSide = new THREE.Mesh(nightGeometry, nightMaterial);
+            celestialBody.add(nightSide);
+            
+            // Store Earth reference
+            earth = celestialBody;
+        } 
+        else if (data.name === 'Sun') {
+            material = new THREE.MeshBasicMaterial({ 
+                map: textureLoader.load('../textures/8k_sun.jpg')
+            });
+            celestialBody = new THREE.Mesh(geometry, material);
+            
+            // Add sun glow
+            var sunGlowGeometry = new THREE.SphereGeometry(data.size * 1.2, 32, 32);
+            var sunGlowMaterial = new THREE.ShaderMaterial({
+                uniforms: {
+                    c: { type: "f", value: 0.5 },
+                    p: { type: "f", value: 6.0 },
+                    glowColor: { type: "c", value: new THREE.Color(0xffddaa) },
+                    viewVector: { type: "v3", value: window.camera.position }
+                },
+                vertexShader: `
+                    uniform vec3 viewVector;
+                    uniform float c;
+                    uniform float p;
+                    varying float intensity;
+                    void main() {
+                        vec3 vNormal = normalize(normalMatrix * normal);
+                        vec3 vNormel = normalize(normalMatrix * viewVector);
+                        intensity = pow(abs(c - dot(vNormal, vNormel)), p);
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform vec3 glowColor;
+                    varying float intensity;
+                    void main() {
+                        vec3 glow = glowColor * intensity;
+                        gl_FragColor = vec4(glow, 1.0);
+                    }
+                `,
+                side: THREE.BackSide,
+                blending: THREE.AdditiveBlending,
+                transparent: true
+            });
+            var sunGlow = new THREE.Mesh(sunGlowGeometry, sunGlowMaterial);
+            celestialBody.add(sunGlow);
+            
+            // Store Sun reference
+            sun = celestialBody;
+            
+            // Connect sun light to sun position
+            if (window.sunLight) {
+                celestialBody.add(window.sunLight);
+                window.sunLight.position.set(0, 0, 0);
+            }
+        } 
+        else {
+            // Regular planet textures
+            let texturePath;
+            switch(data.name) {
+                case 'Mercury': texturePath = '8k_mercury.jpg'; break;
+                case 'Venus': texturePath = '8k_venus_surface.jpg'; break;
+                case 'Mars': texturePath = '8k_mars.jpg'; break;
+                case 'Jupiter': texturePath = '8k_jupiter.jpg'; break;
+                case 'Saturn': texturePath = '8k_saturn.jpg'; break;
+                case 'Moon': texturePath = '8k_moon.jpg'; break;
+                default: texturePath = '8k_mercury.jpg';
+            }
+
+            material = new THREE.MeshPhongMaterial({ 
+                map: textureLoader.load(`../textures/${texturePath}`),
+                shininess: 25
+            });
+            celestialBody = new THREE.Mesh(geometry, material);
+            celestialBody.rotation.y = Math.PI;
+
+            // Add Saturn's rings
+            if (data.name === 'Saturn') {
+                const ringGeometry = new THREE.RingGeometry(data.size + 4, data.size + 12, 64);
+                const ringTexture = textureLoader.load('../textures/8k_saturn_ring_alpha.png');
+                const ringMaterial = new THREE.MeshBasicMaterial({
+                    map: ringTexture,
+                    transparent: true,
+                    side: THREE.DoubleSide
+                });
+                const rings = new THREE.Mesh(ringGeometry, ringMaterial);
+                rings.rotation.x = Math.PI / 2;
+                celestialBody.add(rings);
+            }
         }
-        
+
         // Add invisible hitbox for easier clicking
         const hitboxSize = data.size * 2;
         const hitboxGeometry = new THREE.SphereGeometry(hitboxSize, 8, 8);
@@ -369,464 +245,464 @@ function createPlanets() {
         });
         const hitbox = new THREE.Mesh(hitboxGeometry, hitboxMaterial);
         hitbox.userData = { ...data, isHitbox: true };
-        planet.add(hitbox);
         
-        // Distance from Earth in the geocentric model
-        const distance = scaledGeocentricDistances[data.name];
+        celestialBody.add(hitbox);
         
-        planet.userData = {
-            distance: distance,
-            angle: Math.random() * Math.PI * 2,
-            speed: data.speed,
+        // Store celestial body data
+        celestialBody.userData = { 
             name: data.name,
+            distance: data.distance,
+            speed: data.speed,
+            angle: Math.random() * Math.PI * 2,
+            epicycleRadius: data.epicycleRadius || 0,
+            epicycleSpeed: data.epicycleSpeed || 0,
+            epicycleAngle: Math.random() * Math.PI * 2,
             rotationSpeed: 0.01 / (data.size * 0.4),
             originalSize: data.size,
-            originalDistance: distance,
-            // For epicycles
-            epicycleRadius: distance * 0.2,
-            epicycleSpeed: data.speed * 5
+            originalDistance: data.distance,
+            originalEpicycleRadius: data.epicycleRadius || 0,
+            isCenter: data.isCenter || false
         };
         
-        // Store original values
-        originalScales.push({
+        // Store original values for scaling
+        originalGeoScales.push({
             name: data.name,
             size: data.size,
-            distance: distance
+            distance: data.distance,
+            epicycleRadius: data.epicycleRadius || 0
         });
         
+        // Store initial position for this celestial body
         originalPositions[data.name] = {
-            distance: distance,
-            angle: planet.userData.angle
+            distance: data.distance,
+            angle: celestialBody.userData.angle,
+            epicycleRadius: data.epicycleRadius || 0,
+            epicycleAngle: celestialBody.userData.epicycleAngle
         };
         
-        // Position planet initially
-        planet.position.set(distance, 0, 0);
-        window.scene.add(planet);
-        planets.push(planet);
+        // Set axial tilts
+        switch(data.name) {
+            case 'Earth':
+                celestialBody.rotation.z = 23.5 * Math.PI / 180;
+                break;
+            case 'Mars':
+                celestialBody.rotation.z = 25.2 * Math.PI / 180;
+                break;
+            case 'Jupiter':
+                celestialBody.rotation.z = 3.1 * Math.PI / 180;
+                break;
+            case 'Saturn':
+                celestialBody.rotation.z = 26.7 * Math.PI / 180;
+                break;
+        }
+
+        // Position the celestial body
+        if (data.isCenter) {
+            celestialBody.position.set(0, 0, 0);
+        } else {
+            // Initial position on their orbit
+            const angle = celestialBody.userData.angle;
+            celestialBody.position.set(
+                Math.cos(angle) * data.distance, 
+                0, 
+                Math.sin(angle) * data.distance
+            );
+        }
         
-        // For planets other than Moon, create orbits around Sun
-        if (data.name !== 'Moon') {
-            // Calculate the radius for this planet's orbit around Sun
-            // This is smaller than Earth-centered distances
-            const sunOrbitRadius = distance * 0.3; // Scale down orbit radius around Sun
+        window.scene.add(celestialBody);
+        celestialBodies.push(celestialBody);
+
+        // Create orbit visualization if not Earth
+        if (!data.isCenter) {
+            var orbitGeometry = new THREE.RingGeometry(data.distance - 0.5, data.distance + 0.5, 128);
+            var orbitMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xffffff, 
+                side: THREE.DoubleSide, 
+                transparent: true, 
+                opacity: 0.15
+            });
+            var orbit = new THREE.Mesh(orbitGeometry, orbitMaterial);
+            orbit.rotation.x = Math.PI / 2;
+            window.scene.add(orbit);
             
-            // Store this radius for animation
-            planet.userData.sunOrbitRadius = sunOrbitRadius;
-            
-            // Create a visible orbital ring around the Sun for this planet
-            const planetOrbit = new THREE.Mesh(
-                new THREE.RingGeometry(sunOrbitRadius - 0.5, sunOrbitRadius + 0.5, 128),
-                new THREE.MeshBasicMaterial({
-                    color: 0xffffff,
+            // Create epicycle visualization for planets (not for Sun and Moon)
+            if (data.epicycleRadius && data.epicycleRadius > 0 && data.name !== 'Moon') {
+                var epicycleGeometry = new THREE.RingGeometry(
+                    data.epicycleRadius - 0.3, 
+                    data.epicycleRadius + 0.3, 
+                    64
+                );
+                var epicycleMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xCCCCCC,
                     side: THREE.DoubleSide,
                     transparent: true,
-                    opacity: 0.15
-                })
-            );
-            planetOrbit.rotation.x = Math.PI / 2;
-            
-            // Add this orbit to the sunOrbitCenter so it moves with the Sun
-            sunOrbitCenter.add(planetOrbit);
-            
-            // Store reference to orbit in planet data
-            planet.userData.orbit = planetOrbit;
-        }
-    }
-    
-    // Create planet orbit trails that will follow the Sun
-    planets.forEach(function(planet) {
-        if (planet.userData.name === 'Earth' || planet.userData.name === 'Moon') return;
-        
-        // Create a dynamic orbit trail
-        const orbitTrail = new THREE.Line(
-            new THREE.BufferGeometry(),
-            new THREE.LineBasicMaterial({
-                color: 0xffffff,
-                transparent: true,
-                opacity: 0.3
-            })
-        );
-        
-        // Add the trail to the scene and keep a reference
-        window.scene.add(orbitTrail);
-        planet.userData.orbitTrail = orbitTrail;
-    });
-}
-
-// Update orbit lines to match current scale
-function updateOrbitLines() {
-    const scene = window.scene;
-    if (!scene) return;
-    
-    // Track if we found the Sun's orbit
-    let foundSunOrbit = false;
-    
-    scene.children.forEach(obj => {
-        if (obj.type === 'Mesh' && obj.geometry.type === 'RingGeometry') {
-            // Check if this is the Sun's orbit (Earth-centric)
-            const isSunOrbit = obj.material.color.r > 0.8 && obj.material.color.g > 0.8;
-            
-            if (isSunOrbit) {
-                // Update Sun's orbit around Earth
-                foundSunOrbit = true;
-                const sunDistance = scaledGeocentricDistances['Sun'];
-                const newOrbit = new THREE.RingGeometry(sunDistance - 0.8, sunDistance + 0.8, 128);
-                obj.geometry.dispose();
-                obj.geometry = newOrbit;
+                    opacity: 0.1
+                });
+                var epicycle = new THREE.Mesh(epicycleGeometry, epicycleMaterial);
+                epicycle.rotation.x = Math.PI / 2;
                 
-                // Also update Sun's position to stay on its orbit
-                const sun = window.sun;
-                if (sun && sun.userData && sun.userData.angle !== undefined) {
-                    sun.userData.distance = sunDistance;
-                    sun.position.x = Math.cos(sun.userData.angle) * sunDistance;
-                    sun.position.z = Math.sin(sun.userData.angle) * sunDistance;
-                    
-                    // Update the orbit center to follow Sun
-                    if (window.sunOrbitCenter) {
-                        window.sunOrbitCenter.position.copy(sun.position);
-                    }
-                }
-                return;
-            }
-            
-            // Handle Moon's orbit around Earth
-            if (obj.geometry.parameters && 
-                Math.abs(obj.geometry.parameters.innerRadius - (scaledGeocentricDistances['Moon'] - 0.2)) < 1) {
-                // This is the Moon's orbit
-                const moonDistance = scaledGeocentricDistances['Moon'];
-                const newMoonOrbit = new THREE.RingGeometry(moonDistance - 0.2, moonDistance + 0.2, 64);
-                obj.geometry.dispose();
-                obj.geometry = newMoonOrbit;
-                return;
-            }
-        }
-    });
-    
-    // If we didn't find the Sun's orbit, create it
-    if (!foundSunOrbit) {
-        const sunDistance = scaledGeocentricDistances['Sun'];
-        const sunOrbit = new THREE.Mesh(
-            new THREE.RingGeometry(sunDistance - 0.8, sunDistance + 0.8, 128),
-            new THREE.MeshBasicMaterial({
-                color: 0xffdd99, // Distinct color for Sun's orbit
-                side: THREE.DoubleSide,
-                transparent: true,
-                opacity: 0.2
-            })
-        );
-        sunOrbit.rotation.x = Math.PI / 2;
-        scene.add(sunOrbit);
-    }
-    
-    // Update all planetary orbits around the Sun
-    if (window.sunOrbitCenter) {
-        planets.forEach(function(planet) {
-            const name = planet.userData.name;
-            if (name === 'Earth' || name === 'Moon') return; // Skip Earth and Moon
-            
-            // Find this planet's orbit in the sunOrbitCenter
-            const orbit = planet.userData.orbit;
-            if (orbit) {
-                // Update orbit size
-                const sunOrbitRadius = planet.userData.distance * 0.3;
-                planet.userData.sunOrbitRadius = sunOrbitRadius;
+                // Store reference to epicycle for updating
+                celestialBody.userData.epicycle = epicycle;
                 
-                // Create new geometry for updated orbit size
-                const newOrbit = new THREE.RingGeometry(
-                    sunOrbitRadius - 0.5, sunOrbitRadius + 0.5, 128
+                // Position epicycle at orbit position - FIX: use celestialBody.userData.angle instead of undefined angle
+                epicycle.position.set(
+                    Math.cos(celestialBody.userData.angle) * data.distance, 
+                    0, 
+                    Math.sin(celestialBody.userData.angle) * data.distance
                 );
-                orbit.geometry.dispose();
-                orbit.geometry = newOrbit;
+                
+                window.scene.add(epicycle);
             }
-        });
-    }
+        }
+    });
 }
 
-function updatePlanetScales(scaleMultiplier) {
-    // Update geocentric distances based on scale
-    updateGeocentricScales(scaleMultiplier);
+function updateGeocentricPlanets(speedMultiplier) {
+    // Use the provided parameter or fall back to window value
+    const speed = speedMultiplier !== undefined ? speedMultiplier : (window.speedMultiplier || 1.0);
     
-    // Exact measurements where 1 unit = 1,000,000 km
-    const exactSizes = {
-        'Sun': 1.391, // diameter in units (millions of km)
-        'Mercury': 0.00488,
-        'Venus': 0.012104,
-        'Earth': 0.012742,
-        'Mars': 0.006779,
-        'Jupiter': 0.13982,
-        'Saturn': 0.11646,
-        'Moon': 0.003474 // About 3,474 km
-    };
-    
-    // Update the Sun's size first
-    const sun = window.sun;
-    if (sun) {
-        const originalSunSize = 16; // Original sun size in the model
-        let newSunSize;
-        
-        if (scaleMultiplier < 0.05) {
-            // Visual mode
-            newSunSize = originalSunSize;
-        } else if (scaleMultiplier >= 0.95) {
-            // True scale mode
-            newSunSize = exactSizes['Sun'] * 50;
-        } else {
-            // Blended mode
-            const sigmoid = 1 / (1 + Math.exp(-12 * (scaleMultiplier - 0.5)));
-            newSunSize = originalSunSize * (1 - sigmoid) + exactSizes['Sun'] * 50 * sigmoid;
-        }
-        
-        // Scale the sun
-        sun.scale.set(newSunSize/originalSunSize, newSunSize/originalSunSize, newSunSize/originalSunSize);
-        
-        // Adjust glow effect
-        if (sun.children.length > 0 && sun.children[0].type === 'Mesh') {
-            const glowScale = 1.2 + 0.8 * scaleMultiplier;
-            sun.children[0].scale.set(glowScale, glowScale, glowScale);
-        }
-        
-        // Update sun's position in orbit
-        const sunDistance = scaledGeocentricDistances['Sun'];
-        if (sunDistance) {
-            sun.userData.distance = sunDistance;
+    // Update each celestial body position and rotation
+    celestialBodies.forEach(function(body) {
+        if (!body.userData.isCenter) {
+            // Update orbit angle
+            body.userData.angle += body.userData.speed * speed;
             
-            // Position sun on its current angle
-            const angle = sun.userData.angle || 0;
-            sun.position.x = Math.cos(angle) * sunDistance;
-            sun.position.z = Math.sin(angle) * sunDistance;
+            // Calculate main orbit position
+            const orbitX = Math.cos(body.userData.angle) * body.userData.distance;
+            const orbitZ = Math.sin(body.userData.angle) * body.userData.distance;
+            
+            // For bodies with epicycles, add additional motion
+            if (body.userData.epicycleRadius > 0) {
+                // Update epicycle angle (typically faster than orbit)
+                body.userData.epicycleAngle += body.userData.epicycleSpeed * speed;
+                
+                // Calculate additional position from epicycle
+                const epicycleX = Math.cos(body.userData.epicycleAngle) * body.userData.epicycleRadius;
+                const epicycleZ = Math.sin(body.userData.epicycleAngle) * body.userData.epicycleRadius;
+                
+                // Combined position
+                body.position.x = orbitX + epicycleX;
+                body.position.z = orbitZ + epicycleZ;
+                
+                // Update epicycle circle position and rotation
+                if (body.userData.epicycle) {
+                    body.userData.epicycle.position.set(orbitX, 0, orbitZ);
+                    body.userData.epicycle.rotation.z += 0.002 * speed; // Slight rotation for visual effect
+                }
+            } else {
+                // Bodies without epicycles (like the Moon and Sun in this model)
+                body.position.x = orbitX;
+                body.position.z = orbitZ;
+            }
+            
+            // Self rotation
+            body.rotation.y += body.userData.rotationSpeed * speed;
         }
-    }
+        // Earth stays at center but still rotates
+        else if (body.userData.name === "Earth") {
+            body.rotation.y += body.userData.rotationSpeed * speed;
+        }
+    });
+}
+
+function updateGeocentricScales(scaleMultiplier) {
+    // Use the provided parameter or fall back to window value, with default of 0.2
+    const scale = scaleMultiplier !== undefined ? scaleMultiplier : 
+                 (window.scaleMultiplier !== undefined ? window.scaleMultiplier : 0.2);
     
-    // Now handle planets
-    planets.forEach(function(planet) {
-        const planetName = planet.userData.name;
-        if (!planetName || !exactSizes[planetName]) return;
+    // Store the current scale value to window for other functions to access
+    window.scaleMultiplier = scale;
+    
+    // Define different visual scales based on historical measures vs realism
+    const visualScaleFactor = 0.5;
+    
+    // Get epicycle size from window or use default
+    const epicycleScaleFactor = window.epicycleSize !== undefined ? window.epicycleSize : 0.5;
+    
+    celestialBodies.forEach(function(body) {
+        const bodyName = body.userData.name;
+        const originalData = originalGeoScales.find(b => b.name === bodyName);
         
-        const originalData = originalScales.find(p => p.name === planetName);
         if (!originalData) return;
         
-        // Size scaling
+        // Size scaling with enhanced sun size for realism
         const baseSize = originalData.size;
-        const exactSize = exactSizes[planetName];
-        
-        // Scale size based on mode
         let sizeScale;
-        if (scaleMultiplier < 0.05) {
-            // Nearly pure visual mode
-            sizeScale = baseSize;
-        } else if (scaleMultiplier >= 0.95) {
-            // True scale mode
-            const minSizeThreshold = 1; // Minimum visible size
-            sizeScale = Math.max(exactSize * 50, minSizeThreshold);
+        
+        if (bodyName === 'Sun') {
+            // Dramatically increase sun size with scale realism
+            // At max scale (1.0), make sun 75x larger than visual mode
+            if (scale < 0.05) {
+                // Pure visual mode - normal size
+                sizeScale = baseSize;
+            } else if (scale >= 0.95) {
+                // True scale mode - 75x larger
+                sizeScale = baseSize * 75;
+            } else {
+                // Progressive scaling using exponential curve for more dramatic growth
+                const scaleFactor = Math.pow(scale, 2) * 75;
+                sizeScale = baseSize * (1 + scaleFactor);
+            }
+            
+            // Update sun glow size proportionally
+            if (body.children && body.children.length > 0) {
+                const possibleGlow = body.children.find(child => 
+                    child.material && child.material.type === 'ShaderMaterial');
+                
+                if (possibleGlow) {
+                    // Scale glow with sun, but slightly larger relative to sun at higher scales
+                    const glowScaleFactor = 1.2 + scale * 0.3;
+                    const baseGlowScale = sizeScale / baseSize;
+                    possibleGlow.scale.set(
+                        glowScaleFactor,
+                        glowScaleFactor,
+                        glowScaleFactor
+                    );
+                }
+            }
         } else {
-            // Blended mode
-            const sigmoid = 1 / (1 + Math.exp(-12 * (scaleMultiplier - 0.5)));
-            const visualComponentSize = baseSize * (1 - sigmoid);
-            const trueComponentSize = exactSize * 50 * sigmoid;
-            sizeScale = visualComponentSize + trueComponentSize;
+            // For planets, use similar scaling as before but make them slightly larger at high realism
+            if (scale < 0.05) {
+                // Pure visual mode
+                sizeScale = baseSize;
+            } else if (scale >= 0.95) {
+                // True scale mode with minimum visibility threshold
+                const minSizeThreshold = 1.5; // Slightly larger minimum size
+                
+                if (bodyName === 'Earth') {
+                    sizeScale = baseSize * 1.5;
+                } else {
+                    // Base size with minimum threshold
+                    sizeScale = Math.max(baseSize * 1.2, minSizeThreshold);
+                }
+            } else {
+                // Blended mode with enhanced scaling
+                const sigmoid = 1 / (1 + Math.exp(-12 * (scale - 0.5)));
+                const visualComponent = baseSize * (1 - sigmoid);
+                const realisticComponent = baseSize * (sigmoid) * 1.5; // Slightly larger
+                sizeScale = visualComponent + realisticComponent;
+            }
         }
         
         // Apply size scaling
-        planet.scale.set(sizeScale / baseSize, sizeScale / baseSize, sizeScale / baseSize);
+        body.scale.set(sizeScale / baseSize, sizeScale / baseSize, sizeScale / baseSize);
         
-        // Update planet's orbit and position
-        if (planetName !== 'Earth') {
-            // Get the scaled distance for this planet
-            const orbitDistance = scaledGeocentricDistances[planetName];
-            if (orbitDistance) {
-                // Update userData for distance
-                planet.userData.distance = orbitDistance;
+        // Distance scaling for orbits with enhanced spacing
+        if (!body.userData.isCenter) {
+            // Find the orbit ring for this body
+            const orbitIndex = Array.from(window.scene.children).findIndex(obj => 
+                obj.type === 'Mesh' && 
+                obj.geometry.type === 'RingGeometry' &&
+                Math.abs(obj.geometry.parameters.innerRadius - (originalData.distance - 0.5)) < 0.1
+            );
+            
+            if (orbitIndex !== -1) {
+                let orbitDistance;
                 
-                // Calculate epicycle radius with progressive reduction for outer planets
-                // This prevents overlaps while maintaining the epicycle effect
-                let epicycleRatio;
-                if (planetName === 'Mercury') epicycleRatio = 0.25;
-                else if (planetName === 'Venus') epicycleRatio = 0.2;
-                else if (planetName === 'Mars') epicycleRatio = 0.15;
-                else if (planetName === 'Jupiter') epicycleRatio = 0.1;
-                else if (planetName === 'Saturn') epicycleRatio = 0.08;
-                else epicycleRatio = 0.1; // Default for others
+                // Calculate progressive spacing factor - more spacing as scale increases
+                // Apply more spacing to outer planets
+                const baseSpacingFactor = 1.0 + (scale * 4.0); // Up to 5x spacing at max scale
+                let spacingFactor;
                 
-                // Calculate epicycle radius as a proportion of distance from Earth
-                // but ensure it never causes overlap with adjacent orbits
-                planet.userData.epicycleRadius = orbitDistance * epicycleRatio;
-                
-                // Update planet position based on current angle
-                if (planetName === 'Moon') {
-                    // Simple orbit for Moon
-                    const angle = planet.userData.angle;
-                    planet.position.x = Math.cos(angle) * orbitDistance;
-                    planet.position.z = Math.sin(angle) * orbitDistance;
+                // Calculate increasing spacing factor based on original distance
+                if (originalData.distance <= 50) {
+                    // Inner planets (Mercury) - lower spacing increase
+                    spacingFactor = baseSpacingFactor * 1.0;
+                } else if (originalData.distance <= 100) {
+                    // Middle planets (Venus, Earth, Mars) - moderate spacing increase
+                    spacingFactor = baseSpacingFactor * 1.5;
+                } else if (originalData.distance <= 200) {
+                    // Outer planets (Jupiter, Saturn) - higher spacing increase
+                    spacingFactor = baseSpacingFactor * 2.0;
                 } else {
-                    // Complex orbit with epicycles for planets
-                    const baseAngle = planet.userData.angle;
-                    const epicycleAngle = planet.userData.angle * 5;
-                    const epicycleRadius = planet.userData.epicycleRadius;
+                    // Most distant planets (Uranus, Neptune) - highest spacing increase
+                    spacingFactor = baseSpacingFactor * 2.5;
+                }
+                
+                // Use the enhanced spacing factor to modify orbit distances
+                if (scale < 0.05) {
+                    // Visual mode - base distances
+                    orbitDistance = originalData.distance;
+                } else if (scale >= 0.95) {
+                    // True scale mode with dramatic spacing
+                    orbitDistance = originalData.distance * spacingFactor;
                     
-                    // If it's Mercury or Venus, they move with the Sun
-                    if (planetName === 'Mercury' || planetName === 'Venus') {
-                        const sunAngle = sun.userData.angle || 0;
-                        const sunDistance = sun.userData.distance;
-                        
-                        planet.position.x = Math.cos(sunAngle) * sunDistance + 
-                                           Math.cos(epicycleAngle) * epicycleRadius;
-                        planet.position.z = Math.sin(sunAngle) * sunDistance + 
-                                           Math.sin(epicycleAngle) * epicycleRadius;
-                    } else {
-                        // Other planets have their own orbits with epicycles
-                        planet.position.x = Math.cos(baseAngle) * orbitDistance + 
-                                           Math.cos(epicycleAngle) * epicycleRadius;
-                        planet.position.z = Math.sin(baseAngle) * orbitDistance + 
-                                           Math.sin(epicycleAngle) * epicycleRadius;
+                    // Apply logarithmic scaling for better visualization of outer planets
+                    if (orbitDistance > 300) {
+                        const baseLog = Math.log(300);
+                        orbitDistance = 300 + (Math.log(orbitDistance) - baseLog) * 200;
                     }
+                } else {
+                    // Blended mode with enhanced progressive spacing
+                    const sigmoid = 1 / (1 + Math.exp(-12 * (scale - 0.5)));
+                    const visualDistance = originalData.distance;
+                    const realisticDistance = originalData.distance * spacingFactor;
+                    
+                    // Apply logarithmic compression to realisticDistance if it's very large
+                    let adjustedRealisticDistance = realisticDistance;
+                    if (realisticDistance > 300) {
+                        const baseLog = Math.log(300);
+                        adjustedRealisticDistance = 300 + (Math.log(realisticDistance) - baseLog) * 150;
+                    }
+                    
+                    // Blend between visual and realistic distances
+                    orbitDistance = visualDistance * (1 - sigmoid) + adjustedRealisticDistance * sigmoid;
+                }
+                
+                // Update orbit ring with new distance
+                const newOrbit = new THREE.RingGeometry(orbitDistance - 0.5, orbitDistance + 0.5, 128);
+                window.scene.children[orbitIndex].geometry.dispose();
+                window.scene.children[orbitIndex].geometry = newOrbit;
+                
+                // Update body's distance parameter
+                body.userData.distance = orbitDistance;
+                
+                // Update epicycle size based on epicycleSize slider
+                if (body.userData.epicycleRadius > 0) {
+                    // Make epicycles proportionally larger with distance for better visibility
+                    const epicycleSizeFactor = 1.0 + (scale * 2.0); // Increase epicycle size with scale
+                    const baseEpicycleRadius = originalData.epicycleRadius * epicycleScaleFactor * epicycleSizeFactor;
+                    body.userData.epicycleRadius = baseEpicycleRadius;
+                    
+                    // Find and update the epicycle ring
+                    const epicycleIndex = Array.from(window.scene.children).findIndex(obj => 
+                        obj === body.userData.epicycle
+                    );
+                    
+                    if (epicycleIndex !== -1) {
+                        const newEpicycle = new THREE.RingGeometry(
+                            body.userData.epicycleRadius - 0.3, 
+                            body.userData.epicycleRadius + 0.3, 
+                            64
+                        );
+                        window.scene.children[epicycleIndex].geometry.dispose();
+                        window.scene.children[epicycleIndex].geometry = newEpicycle;
+                    }
+                }
+                
+                // Update position immediately to match new distances
+                const angle = body.userData.angle;
+                const orbitX = Math.cos(angle) * orbitDistance;
+                const orbitZ = Math.sin(angle) * orbitDistance;
+                
+                if (body.userData.epicycleRadius > 0) {
+                    const epicycleX = Math.cos(body.userData.epicycleAngle) * body.userData.epicycleRadius;
+                    const epicycleZ = Math.sin(body.userData.epicycleAngle) * body.userData.epicycleRadius;
+                    
+                    body.position.x = orbitX + epicycleX;
+                    body.position.z = orbitZ + epicycleZ;
+                    
+                    if (body.userData.epicycle) {
+                        body.userData.epicycle.position.set(orbitX, 0, orbitZ);
+                    }
+                } else {
+                    body.position.x = orbitX;
+                    body.position.z = orbitZ;
                 }
             }
         }
     });
 }
 
-// Function to reset planet positions
-function resetPlanetPositions() {
-    // Reset sun position with proper orbit
-    const sun = window.sun;
-    if (sun) {
-        // Start sun at 12 o'clock position
-        sun.userData.angle = Math.PI/2;
-        const distance = scaledGeocentricDistances['Sun'];
-        sun.userData.distance = distance;
-        sun.position.x = Math.cos(sun.userData.angle) * distance;
-        sun.position.z = Math.sin(sun.userData.angle) * distance;
-        
-        // Update orbit center position
-        if (window.sunOrbitCenter) {
-            window.sunOrbitCenter.position.copy(sun.position);
-        }
-    }
+function updateEpicycles(epicycleSize) {
+    // Ensure epicycle size is normalized between 0 and 1
+    const normalizedSize = Math.max(0, Math.min(1, epicycleSize));
     
-    // Reset planets with specific placements for visual clarity
-    planets.forEach(function(planet) {
-        const name = planet.userData.name;
+    // Store on window for access by other functions
+    window.epicycleSize = normalizedSize;
+    
+    celestialBodies.forEach(function(body) {
+        if (body.userData.epicycleRadius > 0) {
+            const originalData = originalGeoScales.find(b => b.name === body.userData.name);
+            if (!originalData) return;
+            
+            // Update epicycle size based on slider with consistent scaling
+            const newRadius = originalData.epicycleRadius * normalizedSize;
+            body.userData.epicycleRadius = newRadius;
+            
+            // Find and update the epicycle ring
+            const epicycleIndex = Array.from(window.scene.children).findIndex(obj => 
+                obj === body.userData.epicycle
+            );
+            
+            if (epicycleIndex !== -1) {
+                const newEpicycle = new THREE.RingGeometry(
+                    newRadius - 0.3, 
+                    newRadius + 0.3, 
+                    64
+                );
+                window.scene.children[epicycleIndex].geometry.dispose();
+                window.scene.children[epicycleIndex].geometry = newEpicycle;
+            }
+        }
+    });
+}
+
+function resetGeocentricPositions() {
+    celestialBodies.forEach(function(body) {
+        const bodyName = body.userData.name;
+        const originalPos = originalPositions[bodyName];
         
-        if (name === 'Earth') {
-            // Earth stays at center
-            planet.position.set(0, 0, 0);
-        } else if (name === 'Moon') {
-            // Moon orbits Earth directly
-            const initialAngle = 0; // 3 o'clock position
-            const distance = scaledGeocentricDistances[name];
+        if (originalPos) {
+            body.userData.angle = originalPos.angle;
+            body.userData.distance = originalPos.distance;
             
-            planet.userData.angle = initialAngle;
-            planet.position.x = Math.cos(initialAngle) * distance;
-            planet.position.z = Math.sin(initialAngle) * distance;
-            planet.userData.distance = distance;
-        } else {
-            // Distribute planets evenly around Sun
-            let initialAngle;
-            // Calculate orbit radius around Sun
-            const orbitRadius = planet.userData.distance * 0.3;
-            planet.userData.sunOrbitRadius = orbitRadius;
-            
-            // Position planets at different angles around the Sun
-            switch(name) {
-                case 'Mercury': initialAngle = 0; break; // 0° relative to Sun
-                case 'Venus': initialAngle = Math.PI/3; break; // 60° relative to Sun
-                case 'Mars': initialAngle = 2*Math.PI/3; break; // 120° relative to Sun
-                case 'Jupiter': initialAngle = Math.PI; break; // 180° relative to Sun 
-                case 'Saturn': initialAngle = 4*Math.PI/3; break; // 240° relative to Sun
-                default: initialAngle = Math.random() * Math.PI * 2;
+            if (body.userData.epicycleRadius > 0) {
+                body.userData.epicycleAngle = originalPos.epicycleAngle;
+                body.userData.epicycleRadius = originalPos.epicycleRadius;
+                
+                // Update epicycle visual
+                if (body.userData.epicycle) {
+                    const newEpicycle = new THREE.RingGeometry(
+                        originalPos.epicycleRadius - 0.3, 
+                        originalPos.epicycleRadius + 0.3, 
+                        64
+                    );
+                    body.userData.epicycle.geometry.dispose();
+                    body.userData.epicycle.geometry = newEpicycle;
+                }
             }
             
-            planet.userData.angle = initialAngle;
-            
-            // Calculate position relative to Sun
-            const sunX = sun.position.x;
-            const sunZ = sun.position.z;
-            
-            // Position planet in orbit around the Sun
-            planet.position.x = sunX + Math.cos(initialAngle) * orbitRadius;
-            planet.position.z = sunZ + Math.sin(initialAngle) * orbitRadius;
+            // Reset position
+            if (body.userData.isCenter) {
+                body.position.set(0, 0, 0);
+            } else {
+                const orbitX = Math.cos(originalPos.angle) * originalPos.distance;
+                const orbitZ = Math.sin(originalPos.angle) * originalPos.distance;
+                
+                if (body.userData.epicycleRadius > 0) {
+                    const epicycleX = Math.cos(body.userData.epicycleAngle) * body.userData.epicycleRadius;
+                    const epicycleZ = Math.sin(body.userData.epicycleAngle) * body.userData.epicycleRadius;
+                    
+                    body.position.x = orbitX + epicycleX;
+                    body.position.z = orbitZ + epicycleZ;
+                    
+                    if (body.userData.epicycle) {
+                        body.userData.epicycle.position.set(orbitX, 0, orbitZ);
+                    }
+                } else {
+                    body.position.x = orbitX;
+                    body.position.z = orbitZ;
+                }
+            }
         }
-    });
-    
-    // Update orbit lines to match current scale
-    updateOrbitLines();
-}
-
-function updatePlanets(speedMultiplier = 1) {
-    // Earth stays at center, but rotates
-    const earth = planets.find(p => p.userData.name === 'Earth');
-    if (earth) {
-        earth.rotation.y += earth.userData.rotationSpeed * speedMultiplier;
-    }
-    
-    // Update sun position - it orbits Earth
-    const sun = window.sun;
-    if (sun) {
-        // Sun moves slower in geocentric model
-        sun.userData.angle = (sun.userData.angle || 0) + 0.005 * speedMultiplier;
-        const sunDistance = scaledGeocentricDistances['Sun'];
-        
-        // Position Sun in orbit around Earth
-        sun.position.x = Math.cos(sun.userData.angle) * sunDistance;
-        sun.position.z = Math.sin(sun.userData.angle) * sunDistance;
-        
-        // Sun self-rotation
-        sun.rotation.y += 0.004 * speedMultiplier;
-        
-        // Update light source position
-        if (window.sunLight) {
-            window.sunLight.position.copy(sun.position);
-        }
-        
-        // Update the sun orbit center position to follow the Sun
-        if (window.sunOrbitCenter) {
-            window.sunOrbitCenter.position.copy(sun.position);
-        }
-    }
-    
-    // Update other planets
-    planets.forEach(function(planet) {
-        const name = planet.userData.name;
-        if (name === 'Earth') return; // Earth stays at center
-        
-        // Update angle
-        planet.userData.angle += planet.userData.speed * speedMultiplier;
-        
-        if (name === 'Moon') {
-            // Moon orbits Earth directly
-            const distance = planet.userData.distance;
-            planet.position.x = Math.cos(planet.userData.angle) * distance;
-            planet.position.z = Math.sin(planet.userData.angle) * distance;
-        } else {
-            // All other planets orbit the Sun (which orbits Earth)
-            // The Sun's position becomes the center of planetary orbits
-            const sunX = sun.position.x;
-            const sunZ = sun.position.z;
-            
-            // Get the planet's orbit radius around the Sun
-            const orbitRadius = planet.userData.sunOrbitRadius;
-            
-            // Position planet in orbit around the Sun (not Earth)
-            planet.position.x = sunX + Math.cos(planet.userData.angle) * orbitRadius;
-            planet.position.z = sunZ + Math.sin(planet.userData.angle) * orbitRadius;
-        }
-        
-        // Planet self-rotation
-        planet.rotation.y += planet.userData.rotationSpeed * speedMultiplier;
     });
 }
 
-// Make functions available to other scripts
-window.updatePlanetScales = updatePlanetScales;
-window.updatePlanets = updatePlanets;
-window.resetPlanetPositions = resetPlanetPositions;
+// Expose necessary functions to window
+window.updateGeocentricPlanets = updateGeocentricPlanets;
+window.updateGeocentricScales = updateGeocentricScales;
+window.updateEpicycles = updateEpicycles;
+window.resetGeocentricPositions = resetGeocentricPositions;
 
-// Initialize when the page loads
+// Create the system when window loads
 window.addEventListener('load', function() {
-    createPlanets();
+    createGeocentricSystem();
     
-    // Apply initial scale
-    if (window.scaleMultiplier !== undefined) {
-        updatePlanetScales(window.scaleMultiplier);
-    }
+    // Apply initial scale if available
+    setTimeout(function() {
+        if (typeof window.updateGeocentricScales === 'function') {
+            window.updateGeocentricScales(window.scaleMultiplier || 0.2);
+        }
+    }, 100);
 });
